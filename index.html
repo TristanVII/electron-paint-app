@@ -4,8 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MS Paint Clone</title>
-  <link rel="stylesheet" href="coloris.min.css"/>
-  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     
@@ -22,10 +20,13 @@
       <option value="pen">Pen</option>
       <option value="eraser">Eraser</option>
     </select>
-    <button id="reset-button" onclick="resetPage()">Reset</button>
+    <button id="reset-button">Reset</button>
+    <button id="ws-connect" >Connect</button>
+    <button id="ws-message" >MOCK SEND MESSAGE</button>
+
   </div>
   <canvas id="canvas" width="1980" height="1080"></canvas>
-  <script src="./src/render.js"></script>
+  <script type="module" src="./src/index.js"></script>
   <script src="./src/jscolor-2.5.2/jscolor.js"></script>
 
 

@@ -1,3 +1,5 @@
+import { WebSocketManager } from "./websocket/websocket.js";
+
 class Context {
   constructor(document) {
     this.isDrawing = false;
@@ -7,6 +9,7 @@ class Context {
     this.currentStroke = [];
     this.canvasState = [];
     this.canvasUndoState = [];
+    this.webSocketManager = new WebSocketManager();
 
     // Documents
     this.colorPicker = document.getElementById("color-picker");
@@ -192,7 +195,4 @@ class Context {
 }
 
 const context = new Context(document);
-function resetPage() {
-  context.resetPage();
-  context.canvasState = [];
-}
+export { context };
