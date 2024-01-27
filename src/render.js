@@ -9,7 +9,7 @@ class Context {
     this.currentStroke = [];
     this.canvasState = [];
     this.canvasUndoState = [];
-    this.webSocketManager = new WebSocketManager();
+    this.webSocketManager = new WebSocketManager(this.drawLines.bind(this));
 
     // Documents
     this.colorPicker = document.getElementById("color-picker");
@@ -78,6 +78,12 @@ class Context {
       lineWidth: this.ctx.lineWidth,
       strokeStyle: this.ctx.strokeStyle,
     };
+    if (this.webSocketManager.isReady) {
+      this.webSocketManager.sendMessage(
+        JSON.stringify({ ...strokeObj, ...{ id: this.webSocketManager.id } })
+      );
+      return;
+    }
     this.currentStroke.push(strokeObj);
     this.drawLines(strokeObj);
   }

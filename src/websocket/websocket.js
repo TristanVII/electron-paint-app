@@ -5,22 +5,25 @@ const nullWsError = () => {
 };
 
 export class WebSocketManager {
-  constructor() {
-    self.id = uuidv4();
+  constructor(messageCB) {
+    this.id = uuidv4();
     this._ws = null;
     this.isReady = false;
+    this.messageCB = messageCB;
   }
 
   connect() {
-    this._ws = this._connect();
+    const roomId = uuidv4();
+    this._ws = this._connect(roomId);
     if (!this._ws) {
       return nullWsError();
     }
     this._setupEventListeners();
+    return roomId;
   }
 
-  _connect() {
-    return new WebSocket(`ws://localhost:3000/ws/${this.id}/test`);
+  _connect(roomId) {
+    return new WebSocket(`ws://localhost:3000/ws/${this.id}/${roomId}`);
   }
 
   _setupEventListeners() {
@@ -32,7 +35,8 @@ export class WebSocketManager {
       this._ws.setRequest;
     };
     this._ws.onmessage = (event) => {
-      console.log("received: ", event.data);
+      const data = JSON.parse(event.data);
+      this.messageCB(data);
     };
 
     this._ws.onerror = (error) => {
@@ -41,6 +45,7 @@ export class WebSocketManager {
     };
   }
 
+  // TODO: maybe have specific type
   sendMessage(content) {
     if (!this._ws || !this.isReady) {
       return nullWsError();
