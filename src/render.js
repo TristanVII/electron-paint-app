@@ -9,7 +9,10 @@ class Context {
     this.currentStroke = [];
     this.canvasState = [];
     this.canvasUndoState = [];
-    this.webSocketManager = new WebSocketManager(this.drawLines.bind(this));
+    this.webSocketManager = new WebSocketManager(
+      this.handleMessages.bind(this)
+    );
+    this.errorCB = null;
 
     // Documents
     this.colorPicker = document.getElementById("color-picker");
@@ -24,6 +27,32 @@ class Context {
     // Watches
     this.setWatches();
     this.setObservers();
+  }
+
+  setErrorCB(cb) {
+    this.errorCB = cb;
+  }
+
+  handleMessages(message) {
+    if (!message.message_type) {
+      console.log("message has no type", message);
+      return;
+    }
+    switch (message.message_type) {
+      case "error":
+        // handle error
+        if (!this.errorCB) {
+          return;
+        }
+        this.errorCB(message.content);
+        break;
+      case "drawing":
+        this.drawLines(message.content.data);
+        break;
+      case "reset":
+        this.resetPage(true);
+        break;
+    }
   }
 
   setWatches() {
@@ -73,8 +102,8 @@ class Context {
     const { x, y } = this.getMousePos(e);
 
     const strokeObj = {
-      x: x,
-      y: y,
+      x: Math.floor(x),
+      y: Math.floor(y),
       lineWidth: this.ctx.lineWidth,
       strokeStyle: this.ctx.strokeStyle,
     };
@@ -184,9 +213,20 @@ class Context {
     lastStroke.forEach((line) => this.drawLines(line));
   }
 
-  resetPage() {
+  resetPage(fromWs = false) {
     this.ctx.fillStyle = "#FFFFFF";
     this.ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (this.webSocketManager.isReady && !fromWs) {
+      this.webSocketManager.sendMessage(
+        JSON.stringify({
+          message_type: "reset",
+          content: {
+            id: this.webSocketManager.id,
+            room_id: this.webSocketManager.roomId,
+          },
+        })
+      );
+    }
   }
 
   handleKeyDown(e) {

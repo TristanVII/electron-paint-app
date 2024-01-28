@@ -2,6 +2,11 @@ import { context } from "./render.js";
 
 onclick = "mockSendMessage()";
 
+context.setErrorCB((errorMessage) => {
+  alert(`${errorMessage}`);
+  context.disconnectRoom();
+});
+
 document.addEventListener("DOMContentLoaded", () => {
   const deleteButton = document.getElementById("reset-button");
   deleteButton.addEventListener("click", () => {
@@ -9,13 +14,13 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   const connectButton = document.getElementById("ws-create");
-  connectButton.addEventListener("click", () => {
-    createRoom();
+  connectButton.addEventListener("click", async () => {
+    await createRoom();
   });
 
   const disconnect = document.getElementById("ws-disconnect");
   disconnect.addEventListener("click", () => {
-    mockSendMessage();
+    disconnectRoom();
   });
 
   const join = document.getElementById("ws-join");
@@ -29,16 +34,20 @@ function resetPage() {
   context.canvasState = [];
 }
 
-function createRoom() {
+async function createRoom() {
   try {
-    const roomId = context.webSocketManager.connect();
+    const roomId = await context.webSocketManager.connect();
     const htmlId = document.getElementById("room-id");
     htmlId.innerHTML = `Room ID: ${roomId}`;
+    context.resetPage();
   } catch (error) {
     // notify front end error
+    console.log(error);
+    alert("Could not connect to Server");
     return;
   }
 
+  document.getElementById("join-room").style.display = "none";
   document.getElementById("ws-disconnect").style.display = "block";
   document.getElementById("ws-create").style.display = "none";
 }
@@ -47,6 +56,9 @@ function disconnectRoom() {
   if (!context.webSocketManager.isReady) {
     return;
   }
+
+  document.getElementById("ws-create").style.display = "block";
+  document.getElementById("join-room").style.display = "block";
   context.webSocketManager.disconnect();
   document.getElementById("ws-disconnect").style.display = "none";
   const htmlId = document.getElementById("room-id");
@@ -70,4 +82,10 @@ function joinRoom() {
   htmlId.innerHTML = `Room ID: ${roomId}`;
 
   document.getElementById("ws-disconnect").style.display = "block";
+  document.getElementById("ws-create").style.display = "none";
 }
+
+context.setErrorCB((errorMessage) => {
+  alert(`${errorMessage}`);
+  disconnectRoom();
+});

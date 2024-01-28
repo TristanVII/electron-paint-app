@@ -4,30 +4,35 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MS Paint Clone</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     
-  <div id="toolbar">
+<div id="toolbar">
     Color: <button id="color-picker" data-jscolor="{}" value="#000"></button>
     <select id="brushSelector">
-      <option value="1">1px</option>
-      <option value="2">2px</option>
-      <option value="4">4px</option>
-      <option value="8">8px</option>
-      <option value="16">16px</option>
+        <option value="2">2px</option>
+        <option value="4" selected>4px</option>
+        <option value="8">8px</option>
+        <option value="16">16px</option>
     </select>
-    <select id="toolSelector">
-      <option value="pen">Pen</option>
-      <option value="eraser">Eraser</option>
-    </select>
-    <button id="reset-button">Reset</button>
-    <button id="ws-create" >Create room</button>
-    <button id="ws-disconnect" display="none">Disconnect room</button>
-    <button id="ws-join" >Join room</button>
-    <input id="join-room" type="text">
-    <div id="room-id"></div>
 
-  </div>
+    <label for="toolSelector">Tool:</label>
+    <select id="toolSelector">
+        <option value="pen">Pen</option>
+        <option value="eraser">Eraser</option>
+    </select>
+
+    <button id="reset-button">Reset</button>
+
+    <div id="room-controls">
+        <button id="ws-create">Create Room</button>
+        <button id="ws-disconnect" style="display: none;">Disconnect Room</button>
+        <button id="ws-join">Join Room</button>
+        <input id="join-room" type="text" placeholder="Enter Room ID">
+        <div id="room-id"></div>
+    </div>
+</div>
   <canvas id="canvas" width="1980" height="1080"></canvas>
   <script type="module" src="./src/index.js"></script>
   <script src="./src/jscolor-2.5.2/jscolor.js"></script>

@@ -13,12 +13,12 @@ export class WebSocketManager {
     this.roomId = null;
   }
 
-  connect(roomId) {
+  async connect(roomId) {
     const _roomId = roomId ? roomId : uuidv4();
-    try {
-      this._ws = this._connect(_roomId);
-    } catch (error) {
-      return nullWsError();
+
+    this._ws = this._connect(_roomId);
+    if (!this._ws) {
+      throw new Error("Failed to connect to WS");
     }
     this._setupEventListeners();
     return _roomId;
@@ -71,6 +71,7 @@ export class WebSocketManager {
     this.sendMessage(JSON.stringify(content));
     this._ws.close();
     this._ws = null;
+    this.isReady = false;
     this.roomId = null;
   }
 

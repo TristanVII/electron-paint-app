@@ -22,6 +22,11 @@ type Content struct {
 	Data   Drawing `json:"data,omitempty"`
 }
 
+type ErrorMessage struct {
+	Message_type string `json:"message_type"`
+	Content      string `json:"content"`
+}
+
 type Message struct {
 	Message_type string  `json:"message_type"`
 	Content      Content `json:"content"`
@@ -103,21 +108,64 @@ func (s *Server) readLoop(ws *websocket.Conn) {
 		case "join":
 			var joinContent Content
 			joinContent = receivedMessage.Content
-			// Handle join event...
-			s.groups[joinContent.RoomId] = append(s.groups[joinContent.RoomId], joinContent.Id)
 
+			if _, ok := s.groups[joinContent.RoomId]; ok {
+				// RoomId exists, proceed with the join operation
+				s.groups[joinContent.RoomId] = append(s.groups[joinContent.RoomId], joinContent.Id)
+
+				// TODO: CREATE NEW FUC SINCE SAME AS RESET
+				var content Content
+				content = receivedMessage.Content
+				message := Message{
+					Message_type: "reset",
+					Content:      content,
+				}
+
+				jsonMessage, err := json.Marshal(message)
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+				for _, con := range s.conns {
+					con.Write(jsonMessage)
+				}
+
+			} else {
+				// RoomId does not exist, send an error message to the client
+				errorMessage := ErrorMessage{
+					Message_type: "error",
+					Content:      "Room does not exist",
+				}
+
+				// Encode the error message into JSON
+				errorJSON, err := json.Marshal(errorMessage)
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+
+				// Send the JSON-encoded error message to the client
+				ws.Write(errorJSON)
+			}
 		case "drawing":
 			var drawingContent Drawing
 			drawingContent = receivedMessage.Content.Data
 
-			// Handle drawing event...
-			jsonData, err := json.Marshal(drawingContent)
+			content := Content{
+				Data: drawingContent,
+			}
+			message := Message{
+				Message_type: "drawing",
+				Content:      content,
+			}
+
+			jsonMessage, err := json.Marshal(message)
 			if err != nil {
-				fmt.Println("Error marshalling Drawing array to JSON: ", err)
+				fmt.Println(err)
 				return
 			}
 			for _, con := range s.conns {
-				con.Write(jsonData)
+				con.Write(jsonMessage)
 			}
 
 		case "close", "leave":
@@ -125,6 +173,23 @@ func (s *Server) readLoop(ws *websocket.Conn) {
 			cont = receivedMessage.Content
 			// Handle close or leave event...
 			s.groups[cont.RoomId] = filterValue(s.groups[cont.RoomId], cont.Id)
+
+		case "reset":
+			var content Content
+			content = receivedMessage.Content
+			message := Message{
+				Message_type: "reset",
+				Content:      content,
+			}
+
+			jsonMessage, err := json.Marshal(message)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			for _, con := range s.conns {
+				con.Write(jsonMessage)
+			}
 
 		default:
 			fmt.Println("INVALID MESSAGE", receivedMessage)
