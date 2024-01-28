@@ -34,22 +34,40 @@ function createRoom() {
     const roomId = context.webSocketManager.connect();
     const htmlId = document.getElementById("room-id");
     htmlId.innerHTML = `Room ID: ${roomId}`;
-    document.getElementById("ws-create").style.display = "hidden";
-    document.getElementById("ws-disconnect").style.display = "block";
   } catch (error) {
-    // notify error
-    console.log(error.message);
+    // notify front end error
+    return;
   }
+
+  document.getElementById("ws-disconnect").style.display = "block";
+  document.getElementById("ws-create").style.display = "none";
 }
 
-function disconnectRoom() {}
+function disconnectRoom() {
+  if (!context.webSocketManager.isReady) {
+    return;
+  }
+  context.webSocketManager.disconnect();
+  document.getElementById("ws-disconnect").style.display = "none";
+  const htmlId = document.getElementById("room-id");
+  htmlId.innerHTML = ``;
+}
 
 function joinRoom() {
   if (context.webSocketManager.isReady) {
     disconnectRoom();
   }
-  let roomId = prompt("Enter roomID to join");
-  if (roomId != null) {
-    // JOIN roomId
+  console.log(document.getElementById("join-room"));
+  let roomId = document.getElementById("join-room").value;
+  console.log(roomId);
+
+  if (roomId == null) {
+    return;
   }
+  console.log("Joining");
+  context.webSocketManager.joinRoom(roomId);
+  const htmlId = document.getElementById("room-id");
+  htmlId.innerHTML = `Room ID: ${roomId}`;
+
+  document.getElementById("ws-disconnect").style.display = "block";
 }

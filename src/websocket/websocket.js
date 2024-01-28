@@ -10,19 +10,23 @@ export class WebSocketManager {
     this._ws = null;
     this.isReady = false;
     this.messageCB = messageCB;
+    this.roomId = null;
   }
 
-  connect() {
-    const roomId = uuidv4();
-    this._ws = this._connect(roomId);
-    if (!this._ws) {
+  connect(roomId) {
+    const _roomId = roomId ? roomId : uuidv4();
+    try {
+      this._ws = this._connect(_roomId);
+    } catch (error) {
       return nullWsError();
     }
     this._setupEventListeners();
-    return roomId;
+    return _roomId;
   }
 
   _connect(roomId) {
+    this.roomId = roomId;
+    console.log("Creating WS connection: ", this.roomId);
     return new WebSocket(`ws://localhost:3000/ws/${this.id}/${roomId}`);
   }
 
@@ -41,7 +45,7 @@ export class WebSocketManager {
 
     this._ws.onerror = (error) => {
       console.log("on error, disconnection: ", error);
-      this._ws.disconnect();
+      this._ws.close();
     };
   }
 
@@ -57,7 +61,47 @@ export class WebSocketManager {
     if (!this._ws) {
       return;
     }
-    this._ws.disconnect();
+    const content = {
+      message_type: "close",
+      content: {
+        id: this.id,
+        room_id: this.roomId,
+      },
+    };
+    this.sendMessage(JSON.stringify(content));
+    this._ws.close();
     this._ws = null;
+    this.roomId = null;
+  }
+
+  leaveRoom() {
+    if (!this._ws || !this.roomId) {
+      return;
+    }
+    const content = {
+      message_type: "leave",
+      content: {
+        id: this.id,
+        room_id: roomId,
+      },
+    };
+    this.sendMessage(content);
+  }
+
+  joinRoom(roomId) {
+    if (!this._ws || !this.isReady) {
+      this.connect(roomId);
+    } else {
+      this.leaveRoom();
+      const content = {
+        message_type: "join",
+        content: {
+          id: this.id,
+          room_id: roomId,
+        },
+      };
+
+      this.sendMessage(JSON.stringify(content));
+    }
   }
 }

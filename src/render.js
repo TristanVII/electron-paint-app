@@ -80,7 +80,14 @@ class Context {
     };
     if (this.webSocketManager.isReady) {
       this.webSocketManager.sendMessage(
-        JSON.stringify({ ...strokeObj, ...{ id: this.webSocketManager.id } })
+        JSON.stringify({
+          message_type: "drawing",
+          content: {
+            id: this.webSocketManager.id,
+            room_id: this.webSocketManager.roomId,
+            data: { ...strokeObj },
+          },
+        })
       );
       return;
     }
