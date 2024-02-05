@@ -14,6 +14,9 @@ class Context {
     );
     this.errorCB = null;
 
+    // Websocket propertiers
+    this.hasDrawAccess = true;
+
     // Documents
     this.colorPicker = document.getElementById("color-picker");
     this.toolSelector = document.getElementById("toolSelector");
@@ -95,7 +98,7 @@ class Context {
   }
 
   draw(e) {
-    if (!this.isDrawing) {
+    if (!this.isDrawing || !this.hasDrawAccess) {
       return;
     }
 

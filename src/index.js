@@ -1,7 +1,5 @@
 import { context } from "./render.js";
 
-onclick = "mockSendMessage()";
-
 context.setErrorCB((errorMessage) => {
   alert(`${errorMessage}`);
   context.disconnectRoom();
@@ -71,7 +69,6 @@ function joinRoom() {
   }
   console.log(document.getElementById("join-room"));
   let roomId = document.getElementById("join-room").value;
-  console.log(roomId);
 
   if (roomId == null) {
     return;

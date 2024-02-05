@@ -9,7 +9,6 @@ import (
 func main() {
 	r := mux.NewRouter()
 	server := newServer()
-
 	// Define a route with path variables for 'id' and 'room_id'
 	r.Handle("/ws/{id}/{room_id}", http.HandlerFunc(server.handleWS))
 

@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/redis/go-redis/v9"
 	"golang.org/x/net/websocket"
 )
 
@@ -33,36 +34,40 @@ type Message struct {
 }
 
 type Server struct {
-	conns  map[string]*websocket.Conn
-	rooms  map[string]Drawing
-	groups map[string][]string
+	conns map[string]*websocket.Conn
+	rdb   *redis.Client
 }
 
 func newServer() *Server {
 	return &Server{
 		// id:Websocket
 		conns: make(map[string]*websocket.Conn),
-		// RoomID:[]Drawings
-		rooms: make(map[string]Drawing),
-		// RoomID:id
-		groups: make(map[string][]string),
+
+		rdb: redis.NewClient(&redis.Options{
+			Addr:     "localhost:6379",
+			Password: "", // No password
+			DB:       0,  // Default DB
+		}),
 	}
 }
 
 func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
-	roomID := vars["room_id"]
+	roomID := "roomID:" + vars["room_id"]
 
-	if _, ok := s.groups[roomID]; ok {
-		s.groups[roomID] = append(s.groups[roomID], id)
-	} else {
-		s.groups[roomID] = []string{id}
+	ctx := r.Context()
+	err := s.rdb.Ping(ctx).Err()
+
+	if err != nil {
+		fmt.Println(err)
+		panic(err)
 	}
-	if _, ok := s.rooms[roomID]; !ok {
-		// If not, add the key with an empty slice of Drawing
-		s.rooms[roomID] = Drawing{}
-		fmt.Println("Added room:", roomID, "with empty drawing array")
+
+	err = s.rdb.SAdd(ctx, roomID, id).Err()
+
+	if err != nil {
+		fmt.Printf("failed to set %s to %s", id, roomID)
 	}
 
 	fmt.Println("new connection from: ", r.RemoteAddr)
@@ -94,6 +99,7 @@ func filterValue(arr []string, valueToRemove string) []string {
 }
 
 func (s *Server) readLoop(ws *websocket.Conn) {
+	ctx := ws.Request().Context()
 	for {
 		var receivedMessage Message
 
@@ -109,28 +115,14 @@ func (s *Server) readLoop(ws *websocket.Conn) {
 			var joinContent Content
 			joinContent = receivedMessage.Content
 
-			if _, ok := s.groups[joinContent.RoomId]; ok {
-				// RoomId exists, proceed with the join operation
-				s.groups[joinContent.RoomId] = append(s.groups[joinContent.RoomId], joinContent.Id)
+			roomKey := "roomID:" + joinContent.RoomId
+			exist, err := s.rdb.Exists(ctx, roomKey).Result()
+			if err != nil {
+				fmt.Println("Error checking if room exists:", err)
+				return
+			}
 
-				// TODO: CREATE NEW FUC SINCE SAME AS RESET
-				var content Content
-				content = receivedMessage.Content
-				message := Message{
-					Message_type: "reset",
-					Content:      content,
-				}
-
-				jsonMessage, err := json.Marshal(message)
-				if err != nil {
-					fmt.Println(err)
-					return
-				}
-				for _, con := range s.conns {
-					con.Write(jsonMessage)
-				}
-
-			} else {
+			if exist == 0 {
 				// RoomId does not exist, send an error message to the client
 				errorMessage := ErrorMessage{
 					Message_type: "error",
@@ -140,13 +132,39 @@ func (s *Server) readLoop(ws *websocket.Conn) {
 				// Encode the error message into JSON
 				errorJSON, err := json.Marshal(errorMessage)
 				if err != nil {
-					fmt.Println(err)
+					fmt.Println("Error encoding error message:", err)
 					return
 				}
 
 				// Send the JSON-encoded error message to the client
 				ws.Write(errorJSON)
+				return
 			}
+
+			err = s.rdb.SAdd(ctx, roomKey, joinContent.Id).Err()
+
+			if err != nil {
+				fmt.Println("Error Joining", err)
+				return
+			}
+
+			// TODO: CREATE NEW FUC SINCE SAME AS RESET
+			var content Content
+			content = receivedMessage.Content
+			message := Message{
+				Message_type: "reset",
+				Content:      content,
+			}
+
+			jsonMessage, err := json.Marshal(message)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			for _, con := range s.conns {
+				con.Write(jsonMessage)
+			}
+
 		case "drawing":
 			var drawingContent Drawing
 			drawingContent = receivedMessage.Content.Data
@@ -169,10 +187,23 @@ func (s *Server) readLoop(ws *websocket.Conn) {
 			}
 
 		case "close", "leave":
+			// TODO: Delete the room if empty
 			var cont Content
 			cont = receivedMessage.Content
 			// Handle close or leave event...
-			s.groups[cont.RoomId] = filterValue(s.groups[cont.RoomId], cont.Id)
+			roomKey := "roomID:" + cont.RoomId
+			groups, err := s.rdb.SMembers(ctx, roomKey).Result()
+			if err != nil {
+				fmt.Println("Failed to retrieve members", err)
+				return
+			}
+			groups = filterValue(groups, cont.Id)
+
+			print("New Group Consists of: ")
+			for _, val := range groups {
+				fmt.Printf("%s ,", val)
+				err = s.rdb.SAdd(ctx, roomKey, val).Err()
+			}
 
 		case "reset":
 			var content Content
